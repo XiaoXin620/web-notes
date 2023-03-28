@@ -133,13 +133,62 @@ function myRef<T = any>(value: T) {
 }
 ```
 
+## to全家桶
 
+### 1.toRef
 
+- 将原始对象转成响应式对象
+- 但原始对象是非响应式的就不会更新视图，但数据是会变
+- 如果原始对象是响应式，则会更新视图并改变数据
 
+```vue
+<template>
+  <div>
+    <button @click="change">change</button>
+    {{ state }}
+  </div>
+</template>
+<script setup lang="ts">
+import { toRef } from 'vue'
+const sampleObj = {
+  name: '喵呼',
+  age: 18
+}
+const state = toRef(sampleObj, 'age')
+const change = () => {
+  state.value++
+  console.log(state)
+}
+</script>
+<style scoped></style>
+```
 
+### 2.toRefs
 
+- 批量创建ref对象，方便解构使用
 
+```javascript
+import { toRef,reactive, toRefs } from 'vue'
+const sampleObj = reactive({
+  name: '喵呼',
+  age: 18
+})
+let {name,age } = toRefs(sampleObj)
+age.value++
+```
 
+### 3.toRaw
+
+- 将响应式对象转为普通对象
+
+```javascript
+import { toRef,reactive, toRefs } from 'vue'
+const sampleObj = reactive({
+  name: '喵呼',
+  age: 18
+})
+const obj = toRaw(sampleObj)
+```
 
 
 
