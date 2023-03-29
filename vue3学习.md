@@ -133,6 +133,67 @@ function myRef<T = any>(value: T) {
 }
 ```
 
+## reactive全家桶
+
+### 1. reactive
+
+- 用来绑定复杂的数据类型 例如 对象 队组
+
+- vue已经做了泛型约束 `T extends object`
+
+- 不可以绑定普通类型，否则会报错
+
+- 数组不可直接赋值，如直接赋值页面不会变化，因为会脱离响应式
+
+  解决方案：
+
+  方案1
+
+  ```javascript
+  
+  let person = reactive<number[]>([])
+  setTimeout(() => {
+    //person = [1, 2, 3] //不可直接赋值
+    person.push(...arr) // 方案1 使用push
+    console.log(person);
+    
+  },1000)
+  ```
+
+  方案2
+
+  ```javascript
+  type Person = {
+    list?:Array<number>
+  }
+  //使用对象包裹
+  let person = reactive<Person>({
+     list:[]
+  })
+  setTimeout(() => {
+    const arr = [1, 2, 3]
+    person.list = arr;
+    console.log(person);
+    
+  },1000)
+  ```
+
+### 2. readonly
+
+- 拷贝一份proxy对象设置为只读
+
+```javascript
+import { reactive ,readonly} from 'vue'
+const person = reactive({count:1})
+const copy = readonly(person)
+//person.count++
+copy.count++
+```
+
+### 3.shallowReactive
+
+> 只能对浅层的数据 如果是深层的数据只会改变值 不会改变视图
+
 ## to全家桶
 
 ### 1.toRef
@@ -190,15 +251,93 @@ const sampleObj = reactive({
 const obj = toRaw(sampleObj)
 ```
 
+## computed计算属性
 
+> 计算属性就是当依赖的属性的值发生变化的时候，才会触发他的更改，如果依赖的值，不发生变化的时候，使用的是缓存中的属性值。
 
+1. 函数形式
 
+```javascript
+import { computed, reactive, ref } from 'vue'
+let price = ref(0)//$0
+let m = computed<string>(()=>{
+   return `$` + price.value
+})
+price.value = 500
+```
 
+2. 对象形式
 
+```javascript
+import { computed, ref } from 'vue'
+let price = ref<number | string>(1)//$0
+let mul = computed({
+   get: () => {
+      return price.value
+   },
+   set: (value) => {
+      price.value = 'set' + value
+   }
+})
+```
 
+## watch监听器
 
+### watch
 
+> `watch` 需要侦听特定的数据源，并在单独的回调函数中执行副作用
 
+> watch第一个参数监听源
+>
+> watch第二个参数回调函数cb（newVal,oldVal）
+>
+> watch第三个参数一个options配置项是一个对象{
+>
+> immediate:true //是否立即调用一次
+>
+> deep:true //是否开启深度监听
+>
+> }
+
+1. 监听单个和多个ref案例
+
+```javascript
+//watch(message, (newVal, oldVal) => { 单个值
+watch([message,message2], (newVal, oldVal) => { //多个则为数组
+    console.log('新的值----', newVal);
+    console.log('旧的值----', oldVal);
+},{
+    immediate:true,
+    deep:true
+})
+```
+
+2. 监听reactive
+
+```javascript
+import { ref, watch ,reactive} from 'vue'
+let message = reactive({
+    nav:{
+        bar:{
+            name:""
+        }
+    }
+})
+watch(message, (newVal, oldVal) => {
+    console.log('新的值----', newVal);
+    console.log('旧的值----', oldVal);
+})
+
+//监听 单一值用函数返回对象的值
+//let message = reactive({
+//   name:"",
+//   name2:""
+//})
+//watch(()=>message.name, (newVal, oldVal) => {
+//    console.log('新的值----', newVal);
+//    console.log('旧的值----', oldVal);
+//})
+```
 
 
 
