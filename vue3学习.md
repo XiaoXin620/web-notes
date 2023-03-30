@@ -623,17 +623,186 @@ const change = () => {
 >
 > 当父组件有很多数据需要分发给其子代组件的时候， 就可以使用provide和inject。
 
-## Event Bus
+## 兄弟传参和Event Bus
+
+> 兄弟组件传参
+
+1. 可以通过派发时间然后通过Props传递可以实现，但比较麻烦
+
+2. Event bus
+
+   > 我们在Vue2 可以使用$emit 传递 $on监听 emit传递过来的事件
+   >
+   > 这个原理其实是运用了JS设计模式之发布订阅模式
 
 ## TSX
 
+> 一个类似于react开发的代码
+
+
+
 ## 自定义指令directive
 
-## 自定义Hooks
+> 除了 Vue 内置的一系列指令 (比如 `v-model` 或 `v-show`) 之外，Vue 还允许你注册自定义的指令
+
+```vue
+<script setup>
+// 在模板中启用 v-focus
+const vFocus = {
+  mounted: (el) => el.focus()
+}
+</script>
+
+<template>
+  <input v-focus />
+</template>
+
+```
+
+> 将一个自定义指令注册到全局
+
+```javascript
+const app = createApp({})
+// 使 v-focus 在所有组件中都可用
+app.directive('focus', {
+  /* ... */
+})
+```
+
+> 指令钩子
+
+```javascript
+const myDirective = {
+  // 在绑定元素的 attribute 前
+  // 或事件监听器应用前调用
+  created(el, binding, vnode, prevVnode) {
+    // 下面会介绍各个参数的细节
+  },
+  // 在元素被插入到 DOM 前调用
+  beforeMount(el, binding, vnode, prevVnode) {},
+  // 在绑定元素的父组件
+  // 及他自己的所有子节点都挂载完成后调用
+  mounted(el, binding, vnode, prevVnode) {},
+  // 绑定元素的父组件更新前调用
+  beforeUpdate(el, binding, vnode, prevVnode) {},
+  // 在绑定元素的父组件
+  // 及他自己的所有子节点都更新后调用
+  updated(el, binding, vnode, prevVnode) {},
+  // 绑定元素的父组件卸载前调用
+  beforeUnmount(el, binding, vnode, prevVnode) {},
+  // 绑定元素的父组件卸载后调用
+  unmounted(el, binding, vnode, prevVnode) {}
+}
+
+```
+
+> ### 钩子参数
+>
+> 指令的钩子会传递以下几种参数：
+>
+> - `el`：指令绑定到的元素。这可以用于直接操作 DOM。
+> - `binding`：一个对象，包含以下属性。
+>   - `value`：传递给指令的值。例如在 `v-my-directive="1 + 1"` 中，值是 `2`。
+>   - `oldValue`：之前的值，仅在 `beforeUpdate` 和 `updated` 中可用。无论值是否更改，它都可用。
+>   - `arg`：传递给指令的参数 (如果有的话)。例如在 `v-my-directive:foo` 中，参数是 `"foo"`。
+>   - `modifiers`：一个包含修饰符的对象 (如果有的话)。例如在 `v-my-directive.foo.bar` 中，修饰符对象是 `{ foo: true, bar: true }`。
+>   - `instance`：使用该指令的组件实例。
+>   - `dir`：指令的定义对象。
+> - `vnode`：代表绑定元素的底层 VNode。
+> - `prevNode`：之前的渲染中代表指令所绑定元素的 VNode。仅在 `beforeUpdate` 和 `updated` 钩子中可用。
+
+> 也可以是动态的
+
+```html
+<div v-example:[arg]="value"></div>
+```
+
+### 函数简写
+
+> 一个很常见的情况是仅仅需要在 `mounted` 和 `updated` 上实现相同的行为，除此之外并不需要其他钩子
+
+```html
+<div v-color="color"></div>
+```
+
+```javascript
+app.directive('color', (el, binding) => {
+  // 这会在 `mounted` 和 `updated` 时都调用
+  el.style.color = binding.value
+})
+```
+
+## 组合式函数(自定义Hooks)
+
+> 在 Vue 应用的概念中，“组合式函数”(Composables) 是一个利用 Vue 的组合式 API 来封装和复用**有状态逻辑**的函数。
+>
+> 其实就是公共方法 复用无状态逻辑
 
 ## Vue3定义全局函数和变量
 
+### Ts声明文件
+
+```typescript
+// 正常工作。
+export {}
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $translate: (key: string) => string
+  }
+}
+```
+
+### globalProperties
+
+> [Vue3](https://so.csdn.net/so/search?q=Vue3&spm=1001.2101.3001.7020) 没有Prototype 属性 使用 app.config.globalProperties 代替 然后去定义变量和函数
+
+```javascript
+const app = createApp({})
+app.config.globalProperties.$http = () => {}
+```
+
+> 案例
+
+```javascript
+app.config.globalProperties.$filters = {
+  format<T extends any>(str: T): string {
+    return `$${str}`
+  }
+}
+```
+
+声明文件
+
+```typescript
+type Filter = {
+    format<T>(str: T): string
+}
+ 
+// 声明要扩充@vue/runtime-core包的声明.
+// 这里扩充"ComponentCustomProperties"接口, 因为他是vue3中实例的属性的类型.
+declare module 'vue' {
+    export interface ComponentCustomProperties {
+        $filters: Filter
+    }
+}
+```
+
+setup读取值
+
+```javascript
+import { getCurrentInstance, ComponentInternalInstance } from 'vue';
+const { appContext } = <ComponentInternalInstance>getCurrentInstance()
+console.log(appContext.config.globalProperties.$env);
+
+//推荐第二种方式
+import {ref,reactive,getCurrentInstance} from 'vue'
+const app = getCurrentInstance()
+console.log(app?.proxy?.$filters.format('js'))
+```
+
 ## Vue3插件
+
+> 插件 (Plugins) 是一种能为 Vue 添加全局功能的工具代码
 
 ## Evnet Loop 和 nextTick
 
