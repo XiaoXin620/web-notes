@@ -803,8 +803,145 @@ console.log(app?.proxy?.$filters.format('js'))
 ## Vue3插件
 
 > 插件 (Plugins) 是一种能为 Vue 添加全局功能的工具代码
+>
+> 你如果是一个对象需要有install方法Vue会帮你自动注入到install 方法 你如果是function 就直接当install 方法去使用
+
+### 插线实现loading
+
+1. Loading.Vue
+
+```vue
+<template>
+    <div v-if="isShow" class="loading">
+        <div class="loading-content">Loading...</div>
+    </div>
+</template>
+    
+<script setup lang='ts'>
+import { ref } from 'vue';
+const isShow = ref(false)//定位loading 的开关
+ 
+const show = () => {
+    isShow.value = true
+}
+const hide = () => {
+    isShow.value = false
+}
+//对外暴露 当前组件的属性和方法
+defineExpose({
+    isShow,
+    show,
+    hide
+})
+</script>
+<style scoped lang="less">
+.loading {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    &-content {
+        font-size: 30px;
+        color: #fff;
+    }
+}
+</style>
+```
+
+2. Loading.ts
+
+```typescript
+import {  createVNode, render, VNode, App } from 'vue';
+import Loading from './index.vue'
+ 
+export default {
+    install(app: App) {
+        //createVNode vue提供的底层方法 可以给我们组件创建一个虚拟DOM 也就是Vnode
+        const vnode: VNode = createVNode(Loading)
+        //render 把我们的Vnode 生成真实DOM 并且挂载到指定节点
+        render(vnode, document.body)
+        // Vue 提供的全局配置 可以自定义
+        app.config.globalProperties.$loading = {
+            show: () => vnode.component?.exposed?.show(),
+            hide: () => vnode.component?.exposed?.hide()
+        }
+ 
+    }
+}
+```
+
+3. Main.ts
+
+```typescript
+import Loading from './components/loading'
+let app = createApp(App)
+app.use(Loading)
+type Lod = {
+    show: () => void,
+    hide: () => void
+}
+//编写ts loading 声明文件放置报错 和 智能提示
+declare module '@vue/runtime-core' {
+    export interface ComponentCustomProperties {
+        $loading: Lod
+    }
+}
+app.mount('#app')
+```
+
+4. 使用方法
+
+```vue
+<template>
+  <div></div>
+</template>
+ 
+<script setup lang='ts'>
+import { ref,reactive,getCurrentInstance} from 'vue'
+const  instance = getCurrentInstance()  
+instance?.proxy?.$Loading.show()
+setTimeout(()=>{
+  instance?.proxy?.$Loading.hide()
+},5000)
+// console.log(instance)
+</script>
+<style>
+*{
+  padding: 0;
+  margin: 0;
+}
+</style>
+```
 
 ## Evnet Loop 和 nextTick
+
+### JS运行机制
+
+<img src="./assets/2_result.png" alt="2_result" style="zoom:80%;" />
+
+<img src="./assets/1_result.png" alt="1_result" style="zoom: 80%;" />
+
+### 同步任务
+
+> 代码从上到下按顺序执行
+
+### 异步任务
+
+#### 1.宏任务
+
+>  script(整体代码)、setTimeout、setInterval、UI交互事件、postMessage、Ajax
+
+#### 2.微任务
+
+> Promise.then catch finally、MutaionObserver、process.nextTick(Node.js 环境)
+
+### 运行机制
+
+> 所有的同步任务都是在主进程执行的形成一个执行栈，主线程之外，还存在一个"任务队列"，异步任务执行队列中先执行宏任务，然后清空当次宏任务中的所有微任务，然后进行下一个tick如此形成循环。
+>
+> `nextTick` 就是创建一个异步任务，那么它自然要等到同步任务执行完成后才执行。
 
 ## Scoped和样式 穿透
 
